@@ -1,4 +1,4 @@
-fastapi==0.95.0
+fastapi==0.136.3
 uvicorn==0.21.0
 # VULN-004 -- pyyaml < 5.4 has CVE-2020-14343 (arbitrary code execution via full_load)
 pyyaml==5.3.1
