@@ -1,0 +1,194 @@
+# Custom policy <-> certification control catalog.
+#
+# Every custom policy we write is registered here with the controls it
+# satisfies across ISO 27001, PCI DSS, SOC 2, and CNBV/IFPE. This is the
+# machine-readable backbone of `docs/regulatory-mapping.md`.
+#
+# Why YAML instead of just Markdown:
+#   - The gate (v3) will read this to emit a per-build compliance report:
+#     "this build produced passing evidence for ISO A.8.24, PCI 3.5, SOC2
+#     CC6.7."
+#   - Auditors can be handed a single source of truth.
+#   - Renaming/retiring a policy updates every compliance doc downstream.
+#
+# Format:
+#   - severity: NOTE | LOW | MEDIUM | HIGH | CRITICAL
+#   - clouds: subset of [aws, gcp, azure, agnostic]
+#   - engine: opa | checkov | semgrep | <custom>
+
+version: 1
+
+policies:
+  - id: EFEX-OPA-001
+    description: >
+      IAM-style policies (any cloud) must not grant Action="*" with
+      Resource="*" on Allow.
+    severity: CRITICAL
+    engine: opa
+    file: opa/aws/iam.rego          # GCP/Azure parity tracked in v3
+    clouds: [aws]
+    threat_model_refs: [TM-IAM-01]
+    controls:
+      iso27001: [A.5.15, A.8.2, A.8.3]
+      # 7.2.4 (periodic user-access reviews) is intentionally NOT claimed:
+      # it is an org process the pipeline cannot attest to.
+      pci_dss: ["7.2.1", "7.2.5"]
+      soc2: [CC6.1, CC6.3]
+      cnbv_cub: ["48-II"]
+
+  - id: EFEX-OPA-002
+    description: >
+      Storage holding payment data (tagged data_class=spei-*) must enforce
+      server-side encryption at rest.
+    severity: CRITICAL
+    engine: opa
+    file: opa/aws/s3.rego
+    clouds: [aws]
+    threat_model_refs: [TM-S3-01]
+    controls:
+      iso27001: [A.8.24]
+      pci_dss: ["3.5.1", "3.5.1.1"]
+      soc2: [CC6.7]
+      cnbv_cub: ["48-I", "Banxico 4/2017 6.4"]
+
+  - id: EFEX_DOCKER_001
+    description: >
+      Container images must declare a non-root USER explicitly; setting
+      USER root or USER 0 also fails.
+    severity: HIGH
+    engine: checkov
+    file: checkov/check_dockerfile_nonroot.py
+    clouds: [agnostic]
+    threat_model_refs: [TM-CONT-01]
+    controls:
+      iso27001: [A.8.27, A.8.28]
+      pci_dss: ["2.2.1", "2.2.6", "6.4.1"]
+      soc2: [CC6.6]
+      cnbv_cub: ["48-II"]
+
+# Scanner-level entries. Each pipeline scanner is itself a "policy" in the
+# sense that "this scanner ran with no CRITICAL/HIGH findings" = passing
+# evidence for the controls it satisfies. The id `SCANNER:<scanner-id>` is
+# matched against the SARIF file name (`evidence/<scanner-id>.sarif`).
+#
+# This is the bridge between scanner output and compliance reporting: the
+# report generator (factory/pipeline/report/compliance_report.py) uses these
+# rows to know which controls each scanner attests to.
+scanners:
+  - id: SCANNER:secrets
+    tool: gitleaks
+    description: "Detect committed secrets across the repo history."
+    controls:
+      iso27001: [A.8.28]
+      pci_dss: ["6.2.1"]
+      soc2: [CC6.1]
+      cnbv_cub: ["48-I"]
+
+  - id: SCANNER:sast-python
+    tool: semgrep
+    description: "SAST against Python source (OWASP Top 10 + FastAPI packs)."
+    controls:
+      iso27001: [A.8.26, A.8.28]
+      pci_dss: ["6.2.1", "6.2.4", "6.4.1"]
+      soc2: [CC6.6]
+
+  - id: SCANNER:sca-python
+    tool: trivy-fs
+    description: "SCA -- known CVEs in declared dependencies."
+    controls:
+      iso27001: [A.8.8]
+      pci_dss: ["6.3.1", "6.3.3"]
+      soc2: [CC7.2]
+      cnbv_cub: ["169"]
+
+  - id: SCANNER:iac-defaults-aws
+    tool: checkov
+    description: "Built-in CIS-aligned checks for the AWS Terraform stack."
+    controls:
+      iso27001: [A.8.9]
+      pci_dss: ["2.2.1"]
+      soc2: [CC6.1]
+
+  - id: SCANNER:dockerfile-service
+    tool: checkov
+    description: "Dockerfile hygiene for the service image (CKV_DOCKER_* defaults + custom EFEX_DOCKER_001 non-root check)."
+    controls:
+      iso27001: [A.8.27]
+      pci_dss: ["2.2.6", "6.4.1"]
+      soc2: [CC6.6]
+
+  - id: SCANNER:iac-custom-aws
+    tool: conftest
+    description: "Custom OPA policies against the Terraform plan (EFEX-OPA-*)."
+    controls:
+      iso27001: [A.5.15, A.8.24]
+      pci_dss: ["3.5.1", "7.2.1"]
+      soc2: [CC6.1, CC6.7]
+      cnbv_cub: ["48-I", "48-II"]
+
+  - id: SCANNER:container-image
+    tool: trivy-image
+    description: "Container image scan -- CVEs in installed layers + misconfig."
+    controls:
+      iso27001: [A.8.8, A.8.27]
+      pci_dss: ["6.3.1", "2.2.1"]
+      soc2: [CC6.6, CC7.2]
+
+  - id: SCANNER:sbom
+    tool: syft
+    description: "CycloneDX SBOM per build -- software inventory evidence."
+    controls:
+      iso27001: [A.5.9]
+      pci_dss: ["6.3.2"]
+      soc2: [CC7.1]
+
+  - id: SCANNER:iac-platform-aws
+    tool: conftest
+    description: "Custom OPA against platform Terraform (evidence bucket, OIDC roles)."
+    controls:
+      iso27001: [A.5.15, A.8.24]
+      pci_dss: ["3.5.1", "7.2.1"]
+      soc2: [CC6.1, CC6.7]
+      cnbv_cub: ["48-I", "48-II"]
+
+  # Pipeline capability -- fires only on push-to-main when the provenance
+  # job (.github/workflows/secure-pipeline.yml) signs the image, attests
+  # SLSA build provenance, and attests the SBOM. Job writes an empty
+  # SARIF to evidence/supply-chain-signing.sarif on success; absence =
+  # not run (CC8.1 stays UNCOVERED on PRs, which is correct -- PRs don't
+  # push or sign).
+  - id: SCANNER:supply-chain-signing
+    tool: cosign+attest-build-provenance
+    description: "Container image signed (cosign keyless) + SLSA L2 build provenance + SBOM attestation."
+    # No PCI claim: 6.4.2 is a WAF requirement, out of pipeline scope
+    # (see factory/controls/pci-dss.yaml) -- signing does not satisfy it.
+    controls:
+      iso27001: [A.8.30, A.8.31]
+      soc2: [CC8.1]
+      cnbv_cub: ["170"]
+
+  # Pipeline capability -- fires on push-to-main when the report job
+  # mirrors compliance evidence to the S3+Object Lock bucket provisioned
+  # by factory/infra/aws/platform/evidence_bucket.tf. Empty SARIF marker
+  # at evidence/evidence-retention.sarif on success.
+  - id: SCANNER:evidence-retention
+    tool: aws-s3-object-lock
+    description: "Compliance evidence mirrored to S3 with Object Lock COMPLIANCE mode (7y retention)."
+    # 11.3.1 (quarterly internal vuln scans) is intentionally NOT claimed:
+    # retention evidence is not scan-cadence evidence.
+    controls:
+      iso27001: [A.8.15]
+      pci_dss: ["10.3.4", "10.5.1"]
+      soc2: [CC7.1]
+      cnbv_cub: ["168"]
+
+# Placeholder slots -- these are obvious next policies but not yet implemented.
+# Listing them here makes the gap visible to auditors and reviewers.
+roadmap:
+  - id: EFEX-OPA-003
+    description: "Public-facing load balancers must enforce TLS 1.2+ and modern ciphers."
+    target_iteration: v3
+    controls:
+      pci_dss: ["4.2.1"]
+      iso27001: [A.8.24]
+      soc2: [CC6.7]

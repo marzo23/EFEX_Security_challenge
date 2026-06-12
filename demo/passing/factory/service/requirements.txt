@@ -1,0 +1,7 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+# VULN-004 remediated -- pyyaml 6.0.2 patches CVE-2020-14343 and later issues.
+pyyaml==6.0.2
+# VULN-005 remediated -- requests 2.32.3 patches CVE-2023-32681 (and
+# CVE-2024-35195 / CVE-2024-47081).
+requests==2.32.3

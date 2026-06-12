@@ -1,0 +1,542 @@
+{
+  "build": {
+    "sha": "red-demo",
+    "generated_at": "2026-06-08T18:17:53+00:00",
+    "severity_floor": "HIGH"
+  },
+  "frameworks": [
+    {
+      "key": "iso27001",
+      "title": "ISO/IEC 27001:2022",
+      "controls": [
+        {
+          "id": "A.5.15",
+          "title": "Access control",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.2",
+          "title": "Privileged access rights",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.3",
+          "title": "Information access restriction",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.8",
+          "title": "Management of technical vulnerabilities",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sca-python",
+            "SCANNER:container-image"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.9",
+          "title": "Configuration management",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:iac-defaults-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.15",
+          "title": "Logging",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": [
+            "evidence retention to S3+Object Lock not yet implemented"
+          ]
+        },
+        {
+          "id": "A.8.24",
+          "title": "Use of cryptography",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-002",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.25",
+          "title": "Secure development lifecycle",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        },
+        {
+          "id": "A.8.26",
+          "title": "Application security requirements",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sast-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.27",
+          "title": "Secure system architecture and engineering principles",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:iac-defaults-aws",
+            "SCANNER:container-image"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.28",
+          "title": "Secure coding",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:secrets",
+            "SCANNER:sast-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "A.8.29",
+          "title": "Security testing in development and acceptance",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        },
+        {
+          "id": "A.8.30",
+          "title": "Outsourced development",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        },
+        {
+          "id": "A.8.31",
+          "title": "Separation of development, test and production environments",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        },
+        {
+          "id": "A.8.32",
+          "title": "Change management",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        }
+      ],
+      "counts": {
+        "PASSING": 0,
+        "FAILING": 9,
+        "PARTIAL": 0,
+        "UNCOVERED": 6,
+        "total": 15
+      }
+    },
+    {
+      "key": "pci_dss",
+      "title": "PCI DSS v4.0",
+      "controls": [
+        {
+          "id": "2.2.1",
+          "title": "Configuration standards developed and applied",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:iac-defaults-aws",
+            "SCANNER:container-image"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "2.2.6",
+          "title": "System security parameters configured to prevent misuse",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:iac-defaults-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "3.5.1",
+          "title": "PAN stored is rendered unreadable (encryption at rest)",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-002",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "3.5.1.1",
+          "title": "Encryption keys managed in accordance with documented procedures",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-002"
+          ],
+          "gaps": [
+            "KMS-key-source validation (customer-managed vs SSE-S3) not yet enforced"
+          ]
+        },
+        {
+          "id": "4.2.1",
+          "title": "Strong cryptography during transmission over open networks",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": [
+            "TLS policy enforcement on load balancers not yet implemented"
+          ]
+        },
+        {
+          "id": "6.2.1",
+          "title": "Bespoke software developed securely",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:secrets",
+            "SCANNER:sast-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.2.4",
+          "title": "Engineering techniques to prevent common attacks (injection, XSS, etc.)",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sast-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.3.1",
+          "title": "Security vulnerabilities are identified",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sca-python",
+            "SCANNER:container-image"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.3.2",
+          "title": "Inventory of bespoke + third-party software maintained",
+          "status": "PASSING",
+          "covered_by": [
+            "SCANNER:sbom"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.3.3",
+          "title": "System components protected from known vulnerabilities via patches",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sca-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.4.1",
+          "title": "Public-facing apps protected against attacks (review/automated tools)",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:sast-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "6.4.2",
+          "title": "Public-facing apps have automated technical solution (WAF or equivalent)",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": [
+            "WAF deploy + tuning not covered by this pipeline"
+          ]
+        },
+        {
+          "id": "7.2.1",
+          "title": "Access control model defined",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "7.2.4",
+          "title": "User account/access reviews at least every six months",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "7.2.5",
+          "title": "Application/system accounts have minimum privileges",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "10.3.4",
+          "title": "Audit logs protected from modification",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": [
+            "Object Lock enforcement not yet implemented"
+          ]
+        },
+        {
+          "id": "11.3.1",
+          "title": "Internal vulnerability scans every 3 months",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        }
+      ],
+      "counts": {
+        "PASSING": 1,
+        "FAILING": 12,
+        "PARTIAL": 0,
+        "UNCOVERED": 4,
+        "total": 17
+      }
+    },
+    {
+      "key": "soc2",
+      "title": "SOC 2 Trust Services Criteria (2017, rev 2022)",
+      "controls": [
+        {
+          "id": "CC6.1",
+          "title": "Logical/physical access controls restrict access",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001",
+            "SCANNER:secrets",
+            "SCANNER:iac-defaults-aws",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "CC6.3",
+          "title": "Authorization aligned with role/responsibility",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "CC6.6",
+          "title": "Logical access for external users protected by encryption",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX_DOCKER_001",
+            "SCANNER:sast-python",
+            "SCANNER:container-image"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "CC6.7",
+          "title": "Data in transit and at rest protected",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-002",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "CC7.1",
+          "title": "Detection of security events",
+          "status": "PASSING",
+          "covered_by": [
+            "SCANNER:sbom"
+          ],
+          "gaps": [
+            "SARIF \u2192 SIEM forwarder not yet implemented (v3)"
+          ]
+        },
+        {
+          "id": "CC7.2",
+          "title": "Anomalies are detected and acted upon",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sca-python",
+            "SCANNER:container-image"
+          ],
+          "gaps": [
+            "Runtime anomaly detection (Falco, etc.) out of pipeline scope"
+          ]
+        },
+        {
+          "id": "CC8.1",
+          "title": "Changes to systems are authorized, documented, tested, approved",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        }
+      ],
+      "counts": {
+        "PASSING": 1,
+        "FAILING": 5,
+        "PARTIAL": 0,
+        "UNCOVERED": 1,
+        "total": 7
+      }
+    },
+    {
+      "key": "cnbv_cub",
+      "title": "CNBV/IFPE CUB-FPE + Banxico Circular 4/2017",
+      "controls": [
+        {
+          "id": "48-I",
+          "title": "Confidentiality and integrity of data in transit and at rest",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-002",
+            "SCANNER:secrets",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "48-II",
+          "title": "Access control based on least privilege",
+          "status": "FAILING",
+          "covered_by": [
+            "EFEX-OPA-001",
+            "EFEX_DOCKER_001",
+            "SCANNER:iac-custom-aws"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "168",
+          "title": "Inalterable logs of critical operations",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": [
+            "S3 + Object Lock long-term archive not yet implemented (v3)"
+          ]
+        },
+        {
+          "id": "169",
+          "title": "Vulnerability management with documented remediation",
+          "status": "FAILING",
+          "covered_by": [
+            "SCANNER:sca-python"
+          ],
+          "gaps": []
+        },
+        {
+          "id": "170",
+          "title": "Pre-production security testing",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        },
+        {
+          "id": "Banxico 4/2017 \u00a76.4",
+          "title": "Encryption of sensitive information",
+          "status": "UNCOVERED",
+          "covered_by": [],
+          "gaps": []
+        }
+      ],
+      "counts": {
+        "PASSING": 0,
+        "FAILING": 3,
+        "PARTIAL": 0,
+        "UNCOVERED": 3,
+        "total": 6
+      }
+    }
+  ],
+  "statuses": [
+    {
+      "id": "EFEX-OPA-001",
+      "kind": "policy",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "EFEX-OPA-002",
+      "kind": "policy",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "EFEX_DOCKER_001",
+      "kind": "policy",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "SCANNER:secrets",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "SCANNER:sast-python",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "SCANNER:sca-python",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "SCANNER:iac-defaults-aws",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 2
+    },
+    {
+      "id": "SCANNER:iac-custom-aws",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 2
+    },
+    {
+      "id": "SCANNER:container-image",
+      "kind": "scanner",
+      "status": "FAILING",
+      "failing_findings": 1
+    },
+    {
+      "id": "SCANNER:sbom",
+      "kind": "scanner",
+      "status": "PASSING",
+      "failing_findings": 0
+    }
+  ]
+}

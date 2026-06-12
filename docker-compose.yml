@@ -1,0 +1,223 @@
+# Local dev + testing harness -- wraps every scanner the CI pipeline runs.
+#
+# Each service produces evidence/<scanner-id>.sarif on the host, mirroring
+# what `factory/pipeline/run-scanner.sh <id>` would produce if the tool
+# were installed locally. The gate + compliance-report services then run
+# Python against that evidence directory.
+#
+# Usage:
+#   docker compose run --rm gitleaks            # one scanner
+#   docker compose --profile scan run --rm all-scanners  # run them all in series
+#   docker compose run --rm gate                # evaluate the gate against evidence/
+#   docker compose run --rm report              # render the compliance report
+#   docker compose up seed-service              # run the vulnerable FastAPI app for manual DAST
+#
+# Versions tracked from .github/workflows/secure-pipeline.yml env: block;
+# bump in lockstep so local results match CI.
+
+name: efex-secure-factory
+
+x-volumes: &repo-volumes
+  - ./:/repo:ro
+  - ./evidence:/out
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Scanner services. `docker compose run --rm <name>` runs one layer and
+  # writes evidence/<id>.sarif into the host's evidence/ directory.
+  # ---------------------------------------------------------------------------
+
+  gitleaks:
+    image: zricethezav/gitleaks:v8.21.2
+    profiles: [scan]
+    volumes: *repo-volumes
+    command:
+      - detect
+      - --source=/repo
+      - --report-format=sarif
+      - --report-path=/out/secrets.sarif
+      - --exit-code=0
+      - --no-banner
+      - --config=/repo/.gitleaks.toml
+
+  semgrep:
+    image: returntocorp/semgrep:1.96.0
+    profiles: [scan]
+    volumes: *repo-volumes
+    working_dir: /repo
+    command:
+      - semgrep
+      - scan
+      - --config=p/python
+      - --config=p/owasp-top-ten
+      - --config=p/fastapi
+      - --config=/repo/factory/policies/semgrep/efex-python.yaml
+      - --sarif
+      - --output=/out/sast-python.sarif
+      - --metrics=off
+      - /repo/factory/service
+
+  trivy-fs:
+    image: aquasec/trivy:0.58.1
+    profiles: [scan]
+    volumes: *repo-volumes
+    command:
+      - fs
+      - --scanners=vuln
+      - --severity=CRITICAL,HIGH,MEDIUM
+      - --format=sarif
+      - --output=/out/sca-python.sarif
+      - --exit-code=0
+      - /repo/factory/service
+
+  checkov-terraform:
+    image: bridgecrew/checkov:3.2.398
+    profiles: [scan]
+    volumes: *repo-volumes
+    entrypoint: ["sh", "-c"]
+    # Checkov writes a *directory* when --output-file-path lacks an extension;
+    # this one-liner flattens to the SARIF file the gate expects.
+    command:
+      - |
+        checkov --directory /repo/factory/infra/aws/terraform \
+          --framework terraform --output sarif \
+          --output-file-path /out/iac-defaults-aws --soft-fail
+        mv /out/iac-defaults-aws/results_sarif.sarif /out/iac-defaults-aws.sarif
+        rm -rf /out/iac-defaults-aws
+
+  checkov-dockerfile:
+    image: bridgecrew/checkov:3.2.398
+    profiles: [scan]
+    volumes: *repo-volumes
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        checkov --directory /repo/factory/service \
+          --external-checks-dir /repo/factory/policies/checkov \
+          --framework dockerfile --output sarif \
+          --output-file-path /out/dockerfile-service --soft-fail
+        mv /out/dockerfile-service/results_sarif.sarif /out/dockerfile-service.sarif
+        rm -rf /out/dockerfile-service
+
+  conftest-verify:
+    # Self-test -- runs the 9 pass/fail fixtures the policy-tests CI job runs.
+    image: openpolicyagent/conftest:v0.55.0
+    profiles: [verify]
+    volumes:
+      - ./factory/policies:/p:ro
+    command:
+      - verify
+      - --policy=/p/opa/aws
+      - --policy=/p/opa/lib
+
+  syft:
+    image: anchore/syft:v1.18.1
+    profiles: [scan]
+    volumes: *repo-volumes
+    command:
+      - dir:/repo/factory/service
+      - --output=cyclonedx-json=/out/sbom.cdx.json
+
+  # ---------------------------------------------------------------------------
+  # Gate + compliance report. Run after the scanner services have populated
+  # ./evidence/ (or against any SARIF directory of your choosing).
+  # ---------------------------------------------------------------------------
+
+  gate:
+    image: python:3.12-slim
+    profiles: [gate]
+    volumes:
+      - ./:/repo:ro
+      - ./evidence:/repo/evidence
+    working_dir: /repo
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        pip install --quiet pyyaml
+        python3 factory/pipeline/gate/evaluate_gate.py \
+          --evidence-dir evidence \
+          --fail-on CRITICAL,HIGH \
+          --config factory/pipeline/config.yaml
+
+  report:
+    image: python:3.12-slim
+    profiles: [gate]
+    volumes:
+      - ./:/repo
+      - ./evidence:/repo/evidence
+      - ./compliance:/repo/compliance
+    working_dir: /repo
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        pip install --quiet pyyaml
+        mkdir -p compliance
+        python3 factory/pipeline/report/compliance_report.py \
+          --evidence-dir evidence \
+          --catalog factory/policies/catalog.yaml \
+          --controls-dir factory/controls \
+          --output compliance/report.md \
+          --json compliance/report.json
+        echo "--- summary ---"
+        sed -n '/^## Summary/,/^## /p' compliance/report.md | head -20
+
+  # ---------------------------------------------------------------------------
+  # Convenience: chain every scan service in series. Equivalent to running
+  # each scan profile target one after the other.
+  # ---------------------------------------------------------------------------
+
+  all-scanners:
+    image: docker:24-cli
+    profiles: [scan-all]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        for svc in gitleaks semgrep trivy-fs checkov-terraform checkov-dockerfile syft; do
+          echo " running $$svc"
+          docker compose run --rm $$svc || echo "::warning::$$svc exited non-zero"
+        done
+
+  # ---------------------------------------------------------------------------
+  # The deliberately-vulnerable seed service. Use for manual DAST + the
+  # ZAP baseline workflow; do NOT expose outside localhost.
+  # ---------------------------------------------------------------------------
+
+  seed-service:
+    profiles: [dev]
+    build:
+      context: ./factory/service
+    image: efex/payments:local
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      JWT_SECRET: dev-do-not-use
+      SPEI_API_KEY: dev-do-not-use
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=2).status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  zap-baseline:
+    # PR-equivalent DAST. Runs against the seed-service; bring that up first.
+    image: zaproxy/zap-stable:2.16.0
+    profiles: [dast]
+    depends_on:
+      seed-service:
+        condition: service_healthy
+    network_mode: "host"   # easiest way to hit localhost:8000 from the ZAP container
+    volumes:
+      - ./evidence:/zap/wrk:rw
+    command:
+      - zap-baseline.py
+      - -t
+      - http://localhost:8000
+      - -r
+      - /zap/wrk/dast.html
+      - -m
+      - "5"
+      - -T
+      - "10"

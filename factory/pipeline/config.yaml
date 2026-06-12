@@ -1,0 +1,121 @@
+# EFEX Secure Software Factory -- Pipeline configuration.
+#
+# This file is the SINGLE source of truth for what runs in the security
+# pipeline. The GitHub Actions workflow expands this into a matrix; each
+# matrix cell invokes the corresponding adapter in scanners/.
+#
+# Adding a scanner:
+#   1. Drop a new adapter into scanners/<tool>.sh that follows the
+#      contract in scanners/README.md.
+#   2. Add an entry below.
+#   3. The workflow picks it up automatically -- no .github/ edits.
+#
+# Swapping a scanner (e.g. Trivy -> Grype):
+#   1. Drop in scanners/grype-fs.sh.
+#   2. Change `tool: trivy-fs` -> `tool: grype-fs` in the entry below.
+#
+# Moving to a different CI (GitLab, Jenkins, Buildkite):
+#   The adapters and config are CI-agnostic. Write a new orchestrator that
+#   loops `pipeline/run-scanner.sh <id>` over the entries here.
+
+version: 1
+
+scanners:
+  - id: secrets
+    layer: secrets
+    tool: gitleaks
+    adapter: scanners/gitleaks.sh
+    inputs:
+      source: "."
+
+  - id: sast-python
+    layer: sast
+    tool: semgrep
+    adapter: scanners/semgrep.sh
+    inputs:
+      paths: ["factory/service"]
+      configs:
+        - "p/python"
+        - "p/owasp-top-ten"
+        - "p/fastapi"
+        - "factory/policies/semgrep/efex-python.yaml"   # org rules the packs miss (e.g. two-step f-string SQLi)
+
+  - id: sca-python
+    layer: sca
+    tool: trivy-fs
+    adapter: scanners/trivy-fs.sh
+    inputs:
+      path: "factory/service"
+
+  - id: iac-defaults-aws
+    layer: iac
+    tool: checkov
+    adapter: scanners/checkov.sh
+    inputs:
+      directory: "factory/infra/aws/terraform"
+      frameworks: ["terraform"]
+
+  # Dockerfile hygiene for the service itself (CKV_DOCKER_* defaults plus
+  # the custom EFEX_DOCKER_001 non-root check). Separate cell because the
+  # service tree and the Terraform tree are different scan targets.
+  - id: dockerfile-service
+    layer: container
+    tool: checkov
+    adapter: scanners/checkov.sh
+    inputs:
+      directory: "factory/service"
+      frameworks: ["dockerfile"]
+      external_checks_dir: "factory/policies/checkov"
+
+  - id: iac-custom-aws
+    layer: iac
+    tool: conftest
+    adapter: scanners/conftest.sh
+    inputs:
+      terraform_dir: "factory/infra/aws/terraform"
+      policy_dir: "factory/policies/opa/aws"
+      lib_dirs: ["factory/policies/opa/lib"]
+
+  # Platform / operational infra (evidence bucket, WORM retention).
+  # Same rule set as the app stack; lives in its own dir so the Red seed
+  # vs. green platform are planned independently.
+  - id: iac-platform-aws
+    layer: iac
+    tool: conftest
+    adapter: scanners/conftest.sh
+    inputs:
+      terraform_dir: "factory/infra/aws/platform"
+      policy_dir: "factory/policies/opa/aws"
+      lib_dirs: ["factory/policies/opa/lib"]
+
+  - id: container-image
+    layer: container
+    tool: trivy-image
+    adapter: scanners/trivy-image.sh
+    inputs:
+      build_context: "factory/service"
+      image_ref: "efex/payments:${COMMIT_SHA}"
+
+  - id: sbom
+    layer: supply-chain
+    tool: syft
+    adapter: scanners/syft.sh
+    inputs:
+      target: "efex/payments:${COMMIT_SHA}"
+      build_context: "factory/service"   # cells are isolated runners -- the adapter builds the image itself
+      format: cyclonedx-json
+    # SBOM is evidence, not a finding. The syft adapter ships an empty
+    # SARIF so the gate sees the run; nothing is severity-gated.
+
+gate:
+  fail_on: [CRITICAL, HIGH]
+  evaluator: factory/pipeline/gate/evaluate_gate.py
+
+evidence:
+  output_dir: evidence
+  sinks:
+    - type: github-code-scanning
+    - type: github-artifact
+      retention_days: 90
+    - type: s3-object-lock    # push-to-main only; report job in secure-pipeline.yml
+    - type: siem-webhook      # push-to-main only; runs when SIEM_WEBHOOK_URL secret is set
