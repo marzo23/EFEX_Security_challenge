@@ -268,7 +268,7 @@ jobs:
 
       - name: Build & push image (digest pinned)
         id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: factory/service
           push: true
