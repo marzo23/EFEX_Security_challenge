@@ -1,0 +1,116 @@
+# PCI DSS v4.0 -- requirements relevant to the Secure Software Factory.
+#
+# EFEX is not a card-data processor today, but treasury/FX flows often touch
+# adjacent card environments. We pre-build PCI evidence so we are ready
+# when scope expands. Subset only: requirements the pipeline can attest to.
+
+version: 1
+framework: PCI DSS v4.0
+scope: "Secure Software Factory -- CI/CD pipeline + factory/ artifacts"
+
+requirements:
+  - id: "2.2.1"
+    title: Configuration standards developed and applied
+    pipeline_evidence:
+      - "Checkov enforces CIS benchmark on Terraform + Dockerfile"
+      - "EFEX_DOCKER_001 (custom) enforces non-root containers"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: "2.2.6"
+    title: System security parameters configured to prevent misuse
+    pipeline_evidence:
+      - "EFEX_DOCKER_001 prevents container running as root"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: "3.5.1"
+    title: PAN stored is rendered unreadable (encryption at rest)
+    pipeline_evidence:
+      - "EFEX-OPA-002 blocks unencrypted storage for payment-data-tagged buckets"
+    related_policies: [EFEX-OPA-002]
+
+  - id: "3.5.1.1"
+    title: Encryption keys managed in accordance with documented procedures
+    pipeline_evidence:
+      - "EFEX-OPA-002 requires aws_s3_bucket_server_side_encryption_configuration; KMS-key validation roadmap v3"
+    gaps: ["KMS-key-source validation (customer-managed vs SSE-S3) not yet enforced"]
+
+  - id: "4.2.1"
+    title: Strong cryptography during transmission over open networks
+    pipeline_evidence:
+      - "Roadmap EFEX-OPA-003: TLS 1.2+ on ALB/NLB listeners (v3)"
+    gaps: ["TLS policy enforcement on load balancers not yet implemented"]
+
+  - id: "6.2.1"
+    title: Bespoke software developed securely
+    pipeline_evidence:
+      - "Semgrep OWASP Top 10 + FastAPI packs block insecure patterns in PR"
+
+  - id: "6.2.4"
+    title: Engineering techniques to prevent common attacks (injection, XSS, etc.)
+    pipeline_evidence:
+      - "Semgrep python.lang.security.audit.* rule pack"
+
+  - id: "6.3.1"
+    title: Security vulnerabilities are identified
+    pipeline_evidence:
+      - "Trivy fs (deps) + Trivy image (layers) scan every PR"
+
+  - id: "6.3.2"
+    title: Inventory of bespoke + third-party software maintained
+    pipeline_evidence:
+      - "Syft generates CycloneDX SBOM on every build; uploaded as artifact"
+
+  - id: "6.3.3"
+    title: System components protected from known vulnerabilities via patches
+    pipeline_evidence:
+      - "Dependabot opens auto-PRs daily for pip + weekly for github-actions ecosystems (.github/dependabot.yml)"
+      - "Pipeline gate runs on every Dependabot PR; merge requires green gate"
+
+  - id: "6.4.1"
+    title: Public-facing apps protected against attacks (review/automated tools)
+    pipeline_evidence:
+      - "SAST blocks injection-class bugs at PR time"
+      - "ZAP baseline scan runs on PR against an ephemeral container (.github/workflows/dast.yml)"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: "6.4.2"
+    title: Public-facing apps have automated technical solution (WAF or equivalent)
+    pipeline_evidence:
+      - "Out of pipeline scope; tracked by platform-networking team"
+    gaps: ["WAF deploy + tuning not covered by this pipeline"]
+
+  - id: "7.2.1"
+    title: Access control model defined
+    pipeline_evidence:
+      - "EFEX-OPA-001 enforces no Action=* Resource=* in IAM"
+    related_policies: [EFEX-OPA-001]
+
+  - id: "7.2.4"
+    title: User account/access reviews at least every six months
+    pipeline_evidence:
+      - "Out of pipeline scope; tracked by IAM workstream"
+
+  - id: "7.2.5"
+    title: Application/system accounts have minimum privileges
+    pipeline_evidence:
+      - "EFEX-OPA-001 blocks wildcard Allow at policy attach time"
+    related_policies: [EFEX-OPA-001]
+
+  - id: "10.3.4"
+    title: Audit logs protected from modification
+    pipeline_evidence:
+      - "Evidence bucket uses S3 Object Lock COMPLIANCE mode (7y default retention) -- not even root can shorten or override"
+      - "Versioning enabled; lifecycle tiers to Glacier IR at 90d, Deep Archive at 365d"
+      - "Writer role (efex-evidence-writer) limited to PutObject; no DeleteObject"
+
+  - id: "10.5.1"
+    title: Audit log history retained at least 12 months, 3 months immediately available
+    pipeline_evidence:
+      - "Per-build compliance evidence retained 7y in WORM bucket (S3 Object Lock COMPLIANCE)"
+      - "Most recent 90 days also held as GitHub Actions artifacts (immediately available)"
+
+  - id: "11.3.1"
+    title: Internal vulnerability scans every 3 months
+    pipeline_evidence:
+      - "Pipeline runs on every PR + every push to main"
+      - "Compliance evidence retained >=7y in WORM bucket; quarterly cadence verifiable from S3 inventory"

@@ -1,0 +1,30 @@
+# EFEX custom Semgrep rules -- org-specific gaps in the community packs.
+#
+# The OSS p/python and p/owasp-top-ten packs miss the two-step pattern
+# "build SQL in an f-string, execute it later" (no cross-statement matching
+# in the plain rules). Taint mode tracks the flow intraprocedurally.
+#
+# Registered in factory/pipeline/config.yaml (sast-python configs).
+rules:
+  - id: efex-py-001-fstring-sql-execute
+    message: >-
+      SQL query built with an f-string is passed to execute(). String
+      interpolation into SQL enables injection -- use parameterized
+      queries (execute(sql, params)) instead.
+    severity: ERROR
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: f"..."
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CONN.execute($SQL, ...)
+              - pattern: $CONN.executemany($SQL, ...)
+          - focus-metavariable: $SQL
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 Injection"
+      references:
+        - https://owasp.org/Top10/A03_2021-Injection/
+      efex_policy: EFEX-SAST-001

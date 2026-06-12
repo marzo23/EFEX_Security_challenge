@@ -1,0 +1,49 @@
+# CNBV / IFPE -- Disposiciones de Caracter General aplicables a las
+# Instituciones de Fondos de Pago Electronico (CUIFPE) and Banxico
+# Circular 4/2017 -- subset enforced by the Secure Software Factory.
+
+version: 1
+framework: CNBV/IFPE CUIFPE + Banxico Circular 4/2017
+scope: "Secure Software Factory -- CI/CD pipeline + factory/ artifacts"
+
+articles:
+  - id: "48-I"
+    title: Confidentiality and integrity of data in transit and at rest
+    pipeline_evidence:
+      - "EFEX-OPA-002 enforces SSE on payment-data storage"
+      - "Roadmap EFEX-OPA-003: TLS-in-transit (v3)"
+    related_policies: [EFEX-OPA-002]
+
+  - id: "48-II"
+    title: Access control based on least privilege
+    pipeline_evidence:
+      - "EFEX-OPA-001 blocks wildcard IAM"
+      - "EFEX_DOCKER_001 blocks root containers"
+    related_policies: [EFEX-OPA-001, EFEX_DOCKER_001]
+
+  - id: "168"
+    title: Inalterable logs of critical operations
+    pipeline_evidence:
+      - "Compliance reports + signing attestations mirrored to S3 bucket with Object Lock COMPLIANCE mode (7y retention)"
+      - "GitHub Actions audit log + SARIF artifacts (365d retention) as the short-term ledger"
+      - "OIDC-bound IAM role limited to PutObject (no DeleteObject); Object Lock denies override at the storage layer"
+
+  - id: "169"
+    title: Vulnerability management with documented remediation
+    pipeline_evidence:
+      - "Trivy fs + Trivy image gate every PR"
+      - "Per-finding remediation tracked in the squad backlog; compliance report mirrored to S3+Object Lock for the audit trail"
+
+  - id: "170"
+    title: Pre-production security testing
+    pipeline_evidence:
+      - "SAST + SCA + IaC + Container layers all run on PR; gate blocks merge"
+      - "DAST baseline (OWASP ZAP) runs on PRs touching service/"
+      - "Container image signed (cosign) + SLSA provenance attested on every push to main"
+
+  - id: "Banxico 4/2017 6.4"
+    title: Encryption of sensitive information
+    pipeline_evidence:
+      - "EFEX-OPA-002 enforces SSE on SPEI-tagged buckets"
+      - "Checkov default checks for unencrypted EBS, RDS, etc."
+    related_policies: [EFEX-OPA-002]

@@ -1,0 +1,58 @@
+# Pre-commit hooks -- run the cheapest gate checks on the developer laptop
+# *before* CI runs. Goal: secrets and trivial Rego/IaC mistakes get caught
+# in seconds, not minutes, so PRs are clean by the time CI starts.
+#
+# Install once per repo:
+#   pip install pre-commit && pre-commit install
+#
+# CI also runs `pre-commit run --all-files` as a sanity check.
+
+repos:
+  # ---------------------------------------------------------------------
+  # Hygiene -- fast, no external network.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^factory/policies/opa/.*\.rego$   # parsed by opa, not yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ---------------------------------------------------------------------
+  # Secrets -- local mirror of the gate's secrets layer.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------
+  # Python -- ruff is fast enough to run on every commit.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.5
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------
+  # Rego -- format + lint custom OPA policies before they hit CI.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/StyraInc/regal
+    rev: v0.21.3
+    hooks:
+      - id: regal-lint
+        files: ^factory/policies/opa/.*\.rego$
+
+  # ---------------------------------------------------------------------
+  # Terraform -- format-only locally; checkov runs in CI.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.92.1
+    hooks:
+      - id: terraform_fmt

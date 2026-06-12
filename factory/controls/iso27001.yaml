@@ -1,0 +1,105 @@
+# ISO/IEC 27001:2022 -- Annex A controls relevant to the Secure Software Factory.
+#
+# This is intentionally a subset: only controls where THIS pipeline produces
+# evidence. Org-wide controls (HR, physical security, supplier vetting) live
+# in the company-wide ISMS, not here.
+
+version: 1
+framework: ISO/IEC 27001:2022
+scope: "Secure Software Factory -- CI/CD pipeline + factory/ artifacts"
+
+controls:
+  - id: A.5.9
+    title: Inventory of information and other associated assets
+    pipeline_evidence:
+      - "Syft produces a CycloneDX SBOM per build -- the authoritative software inventory for the service image"
+
+  - id: A.5.15
+    title: Access control
+    pipeline_evidence:
+      - "Custom OPA EFEX-OPA-001 blocks IAM Action=* Resource=* in Terraform plans"
+    related_policies: [EFEX-OPA-001]
+
+  - id: A.8.2
+    title: Privileged access rights
+    pipeline_evidence:
+      - "EFEX-OPA-001 prevents over-privileged IAM in production deploys"
+    related_policies: [EFEX-OPA-001]
+
+  - id: A.8.3
+    title: Information access restriction
+    pipeline_evidence:
+      - "EFEX-OPA-001 + Checkov SG/NACL defaults block over-permissive network paths"
+    related_policies: [EFEX-OPA-001]
+
+  - id: A.8.8
+    title: Management of technical vulnerabilities
+    pipeline_evidence:
+      - "Trivy fs (SCA) blocks CRITICAL/HIGH CVEs in deps"
+      - "Trivy image blocks CRITICAL/HIGH CVEs in container layers"
+      - "Per-finding remediation tracked in the squad backlog"
+
+  - id: A.8.9
+    title: Configuration management
+    pipeline_evidence:
+      - "Checkov defaults validate Terraform + Dockerfile against CIS"
+      - "Custom Checkov EFEX_DOCKER_001 enforces non-root containers"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: A.8.15
+    title: Logging
+    pipeline_evidence:
+      - "Compliance report mirrored to S3 bucket with Object Lock COMPLIANCE mode + KMS + versioning (factory/infra/aws/platform/evidence_bucket.tf)"
+      - "Report retention: 7 years default, tunable via evidence_retention_years var"
+
+  - id: A.8.24
+    title: Use of cryptography
+    pipeline_evidence:
+      - "Custom OPA EFEX-OPA-002 blocks unencrypted payment-data storage"
+    related_policies: [EFEX-OPA-002]
+
+  - id: A.8.25
+    title: Secure development lifecycle
+    pipeline_evidence:
+      - "Multi-layer pipeline (secrets, SAST, SCA, IaC, container, SBOM) runs on every PR"
+      - "Quality gate blocks merge on unwaived CRITICAL/HIGH findings"
+
+  - id: A.8.26
+    title: Application security requirements
+    pipeline_evidence:
+      - "Semgrep OWASP Top 10 + FastAPI rule packs detect requirement violations in code"
+
+  - id: A.8.27
+    title: Secure system architecture and engineering principles
+    pipeline_evidence:
+      - "EFEX_DOCKER_001 enforces least-privilege container runtime"
+      - "Threat model (docs/threat-model.md) reviewed per major release"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: A.8.28
+    title: Secure coding
+    pipeline_evidence:
+      - "Semgrep blocks SQLi, command injection, hardcoded-secret anti-patterns"
+      - "Gitleaks blocks committed secrets"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: A.8.29
+    title: Security testing in development and acceptance
+    pipeline_evidence:
+      - "Pipeline gates every PR; ZAP baseline DAST on PRs touching factory/service/"
+
+  - id: A.8.30
+    title: Outsourced development
+    pipeline_evidence:
+      - "Container image signed (cosign keyless via OIDC) on push to main"
+      - "SLSA build provenance + SBOM attested via actions/attest-* (Sigstore Fulcio/Rekor)"
+
+  - id: A.8.31
+    title: Separation of development, test and production environments
+    pipeline_evidence:
+      - "Pipeline runs identically across environments; environment promotion gated on green pipeline"
+
+  - id: A.8.32
+    title: Change management
+    pipeline_evidence:
+      - "All changes via PR; pipeline runs on every PR; CODEOWNERS routes pipeline + policy edits to @efex/security-platform"

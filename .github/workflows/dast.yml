@@ -1,0 +1,59 @@
+name: dast (zap baseline)
+
+# DAST baseline -- runs ZAP against an ephemeral container of the seed
+# service so we have evidence the app is reachable + a default-config
+# attack surface scan. Non-blocking by design (warn-mode); ZAP false
+# positives are common and we don't want to block PRs on tuning.
+#
+# To make it blocking later: remove `continue-on-error` and tighten
+# `-c .zap.conf` to fail-on specific rule classes.
+
+on:
+  pull_request:
+    paths:
+      - "factory/service/**"
+      - ".github/workflows/dast.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+jobs:
+  zap-baseline:
+    name: zap baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build seed service image
+        run: docker build -t efex/payments:pr-${{ github.sha }} factory/service
+
+      - name: Run seed service
+        env:
+          JWT_SECRET: dast-only-not-real
+          SPEI_API_KEY: dast-only-not-real
+        run: |
+          docker run -d --name efex-dast \
+            -e JWT_SECRET -e SPEI_API_KEY \
+            -p 8000:8000 \
+            efex/payments:pr-${{ github.sha }}
+          # Wait for /health
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && break || sleep 1
+          done
+
+      - name: ZAP baseline
+        continue-on-error: true   # non-blocking; warn-mode
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: http://localhost:8000
+          cmd_options: "-a -j -m 5 -T 10"
+          fail_action: false      # echo above; redundant but explicit
+          artifact_name: zap-baseline-report
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f efex-dast || true

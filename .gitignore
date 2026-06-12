@@ -1,0 +1,26 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Harness run artifacts -- keep the directory, not the contents
+tools/harness/runs/*
+!tools/harness/runs/.gitkeep
+
+# Terraform
+factory/infra/**/.terraform/
+factory/infra/**/.terraform.lock.hcl
+factory/infra/**/plan.bin
+factory/infra/**/plan.json
+*.tfstate
+*.tfstate.backup
+
+# Pipeline evidence (generated locally; CI uses artifacts)
+evidence/
+*.sarif
+*.cdx.json

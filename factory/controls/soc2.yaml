@@ -1,0 +1,52 @@
+# SOC 2 -- Trust Services Criteria (TSC) relevant to the Secure Software Factory.
+
+version: 1
+framework: SOC 2 Trust Services Criteria (2017, rev 2022)
+scope: "Secure Software Factory -- CI/CD pipeline + factory/ artifacts"
+
+criteria:
+  - id: CC6.1
+    title: Logical/physical access controls restrict access
+    pipeline_evidence:
+      - "EFEX-OPA-001 prevents wildcard IAM grants at deploy time"
+    related_policies: [EFEX-OPA-001]
+
+  - id: CC6.3
+    title: Authorization aligned with role/responsibility
+    pipeline_evidence:
+      - "EFEX-OPA-001 enforces least-privilege IAM policies"
+    related_policies: [EFEX-OPA-001]
+
+  - id: CC6.6
+    title: Logical access for external users protected by encryption
+    pipeline_evidence:
+      - "EFEX_DOCKER_001 enforces non-root containers reducing lateral-movement blast radius"
+      - "Roadmap EFEX-OPA-003: enforce TLS 1.2+ on public listeners (v3)"
+    related_policies: [EFEX_DOCKER_001]
+
+  - id: CC6.7
+    title: Data in transit and at rest protected
+    pipeline_evidence:
+      - "EFEX-OPA-002 enforces encryption at rest for payment-data storage"
+      - "Roadmap EFEX-OPA-003: TLS-in-transit policy (v3)"
+    related_policies: [EFEX-OPA-002]
+
+  - id: CC7.1
+    title: Detection of security events
+    pipeline_evidence:
+      - "All SARIF results published to GitHub code-scanning"
+      - "Compliance evidence mirrored to S3 + Object Lock (7y retention) so detection records survive any in-CI tamper"
+    gaps: ["Real-time SARIF -> SIEM forwarder still on v3 roadmap"]
+
+  - id: CC7.2
+    title: Anomalies are detected and acted upon
+    pipeline_evidence:
+      - "Pipeline gate blocks anomalies (unwaived CRITICAL/HIGH) before merge"
+    gaps: ["Runtime anomaly detection (Falco, etc.) out of pipeline scope"]
+
+  - id: CC8.1
+    title: Changes to systems are authorized, documented, tested, approved
+    pipeline_evidence:
+      - "All changes via PR; pipeline runs on PR; CODEOWNERS routes sensitive paths to @efex/security-platform"
+      - "Gate has no in-repo exception path; any 'let it through' decision is a visible PR-reviewed config edit"
+      - "Container images signed (cosign keyless) + SLSA L2 provenance attested on every push to main; verification via `gh attestation verify`"

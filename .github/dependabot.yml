@@ -1,0 +1,38 @@
+# Dependabot config -- opens auto-PRs for vulnerable / outdated deps.
+#
+# Covers two ecosystems this repo ships:
+#   - pip: the FastAPI seed service in factory/service/
+#   - github-actions: pinned actions in .github/workflows/
+#
+# Why daily for both: Lead Time < 1 h is the stated org SLA; the security
+# team would rather review one PR per package per day than batch weekly
+# and risk a 30-day silent exposure window.
+
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /factory/service
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: "deps"
+      include: scope
+    # Group patch-level bumps; majors stay individual so the gate sees them.
+    groups:
+      patch-updates:
+        update-types: [patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"
