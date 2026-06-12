@@ -207,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: evidence
           merge-multiple: true
@@ -251,7 +251,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download SBOM produced by the scan job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: evidence-sbom
           path: evidence
@@ -341,7 +341,7 @@ jobs:
       id-token: write          # OIDC role for the evidence bucket (main only)
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: evidence
           merge-multiple: true
