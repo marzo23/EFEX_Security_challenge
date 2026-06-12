@@ -1,7 +1,7 @@
 fastapi==0.95.0
 uvicorn==0.21.0
 # VULN-004 -- pyyaml < 5.4 has CVE-2020-14343 (arbitrary code execution via full_load)
-pyyaml==5.3.1
+pyyaml==6.0.3
 # VULN-005 -- requests < 2.31.0 has CVE-2023-32681 (Proxy-Authorization header
 # leak on redirect, MEDIUM). 2.25.1 is the newest vulnerable pin whose idna
 # range still resolves alongside fastapi/anyio, so the image stays buildable.
