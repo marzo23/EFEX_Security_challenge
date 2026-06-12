@@ -5,4 +5,4 @@ pyyaml==5.3.1
 # VULN-005 -- requests < 2.31.0 has CVE-2023-32681 (Proxy-Authorization header
 # leak on redirect, MEDIUM). 2.25.1 is the newest vulnerable pin whose idna
 # range still resolves alongside fastapi/anyio, so the image stays buildable.
-requests==2.25.1
+requests==2.34.2
